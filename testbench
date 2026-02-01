@@ -1,0 +1,105 @@
+`timescale 1ns/1ps
+
+module tb_newfeature;
+
+    reg clk;
+    reg reset;
+    reg enable;
+
+    reg  [7:0] pixel_in;
+    reg  [7:0] pixel_left;
+    reg  [7:0] pixel_up;
+    reg  [7:0] pixel_up_left;
+    reg  [7:0] pixel_up_right;
+
+    wire [7:0] confidence;
+    wire fake_detected;
+
+    // 32x32 = 1024 pixels
+    reg [7:0] img_data [0:1023];
+    integer i;
+    integer row, col;
+    integer idx;
+
+    // DUT (your module name = newfeature)
+    newfeature dut (
+        .clk(clk),
+        .reset(reset),
+        .enable(enable),
+        .pixel_in(pixel_in),
+        .pixel_left(pixel_left),
+        .pixel_up(pixel_up),
+        .pixel_up_left(pixel_up_left),
+        .pixel_up_right(pixel_up_right),
+        .confidence(confidence),
+        .fake_detected(fake_detected)
+    );
+
+    // Clock 100MHz
+    always #5 clk = ~clk;
+
+    // Safe pixel fetch function (avoid out of bounds)
+    function [7:0] get_pix;
+        input integer r;
+        input integer c;
+        integer id;
+        begin
+            if (r < 0 || r > 31 || c < 0 || c > 31)
+                get_pix = 8'd0;
+            else begin
+                id = r*32 + c;
+                get_pix = img_data[id];
+            end
+        end
+    endfunction
+
+    initial begin
+        clk = 0;
+        reset = 1;
+        enable = 0;
+
+        pixel_in = 0;
+        pixel_left = 0;
+        pixel_up = 0;
+        pixel_up_left = 0;
+        pixel_up_right = 0;
+
+        // ✅ CHANGE THIS LINE TO TEST REAL OR FAKE
+        // $readmemh("image_real_1.txt", img_data);
+        $readmemh("image_fake_1.txt", img_data);
+
+        #50;
+        reset = 0;
+        enable = 1;
+
+        // Feed pixels with proper neighbors
+        for (i = 0; i < 1024; i = i + 1) begin
+            row = i / 32;
+            col = i % 32;
+
+            @(negedge clk);
+
+            pixel_in       = get_pix(row, col);
+            pixel_left     = get_pix(row, col-1);
+            pixel_up       = get_pix(row-1, col);
+            pixel_up_left  = get_pix(row-1, col-1);
+            pixel_up_right = get_pix(row-1, col+1);
+        end
+
+        #50;
+        enable = 0;
+
+        $display("=====================================");
+        $display("FINAL RESULTS");
+        $display("CONFIDENCE     = %d", confidence);
+        $display("FAKE DETECTED  = %d", fake_detected);
+        if (fake_detected)
+            $display("RESULT = FAKE IMAGE");
+        else
+            $display("RESULT = REAL IMAGE");
+        $display("=====================================");
+
+        $finish;
+    end
+
+endmodule

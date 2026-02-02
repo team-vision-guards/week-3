@@ -64,7 +64,7 @@ module tb_newfeature;
         pixel_up_left = 0;
         pixel_up_right = 0;
 
-        // ✅ CHANGE THIS LINE TO TEST REAL OR FAKE
+        // CHANGE THIS LINE TO TEST REAL OR FAKE
         // $readmemh("image_real_1.txt", img_data);
         $readmemh("image_fake_1.txt", img_data);
 
